@@ -5,6 +5,7 @@ import json
 import os
 import re
 
+
 def create_amendment_dict(base_url, party_lookup):
     try:
         ret = {'sponsor': {}, 'cosponsors': []}

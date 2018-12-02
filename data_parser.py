@@ -2,51 +2,7 @@ import glob
 import json
 import networkx as nx
 import itertools
-import re
 
-def generate_graph_from_existing_data():
-    G = nx.Graph()
-
-    with open('/Users/alexray/Documents/data/legislators/party_lookup', 'r') as f:
-        party_lookup = json.load(f)
-    with open('/Users/alexray/Documents/data/legislators/bioguide_lookup', 'r') as f:
-        bioguide_lookup = json.load(f)
-
-    def get_bioguide(thomas):
-        return bioguide_lookup[thomas]
-    def get_party(bioguide):
-        return party_lookup[bioguide]
-
-    counter = 0
-    s = set()
-    with open('./govtrack_cosponsor_data/govtrack_cosponsor_data_98_congress.csv', 'r') as f:
-        next(f)
-        for line in f:
-
-            # https: // stackoverflow.com / questions / 38336518 /
-            # Remove commas inside quotes
-            line = re.sub(r'(?!(([^"]*"){2})*[^"]*$),', '', line)
-            bill_number, name, thomas, bioguide, state, _, _, _, _, _ = line.strip().replace('"', '').split(',')
-            if bill_number.startswith('h'):
-                continue
-            s.add(bill_number)
-            counter += 1
-            '''
-            sponsor_id = get_bioguide(thomas)
-            if sponsor_id not in G:
-                G.add_node(sponsor_id)
-                G.nodes[sponsor_id]['party'] = party_lookup[sponsor_id]['party']
-
-            if not G.has_edge(u, v):
-                G.add_edge(u, v, weight=1)
-            # Otherwise, update weight
-            else:
-                w = G[u][v]['weight']
-                G.add_edge(u, v, weight=w + 1)
-            '''
-    print(len(s))
-    return G
-#generate_graph_from_existing_data()
 
 def generate_bipartite_graph(path, congress, origins):
     assert 93 <= congress < 116, 'Not a valid congress'
@@ -57,6 +13,8 @@ def generate_bipartite_graph(path, congress, origins):
         bioguide_lookup = json.load(f)
     with open(path + 'legislators/party_lookup', 'r') as f:
         party_lookup = json.load(f)
+    with open(path + 'legislators/legislators-current-test.json', 'r') as f:
+        secondary_party_lookup = json.load(f)
 
     def get_bioguide(d):
         if 'bioguide_id' in d:
@@ -64,7 +22,15 @@ def generate_bipartite_graph(path, congress, origins):
         return bioguide_lookup[d['thomas_id']]
 
     def get_party(bioguide):
-        return party_lookup[bioguide]
+        found = False
+        if bioguide in party_lookup:
+            return party_lookup[bioguide]['party']
+        # https://theunitedstates.io/congress-legislators/ for more current data
+        else:
+            for e in secondary_party_lookup:
+                if e['id']['bioguide'] == bioguide:
+                    found = True
+                    return e['terms'][0]['party']
 
     counter = 0
     bill_id_counter = 1
@@ -86,7 +52,7 @@ def generate_bipartite_graph(path, congress, origins):
                     G.add_node(sponsor_id)
                     G.nodes[sponsor_id]['name'] = data['sponsor']['name']
                     G.nodes[sponsor_id]['state'] = data['sponsor']['state']
-                    G.nodes[sponsor_id]['party'] = party_lookup[sponsor_id]['party']
+                    G.nodes[sponsor_id]['party'] = get_party(sponsor_id)
                     G.nodes[sponsor_id]['type'] = 'legislator'
                 sponsors.append(sponsor_id)
                 for cosponsor in data['cosponsors']:
@@ -95,7 +61,7 @@ def generate_bipartite_graph(path, congress, origins):
                         G.add_node(cosponsor_id)
                         G.nodes[cosponsor_id]['name'] = cosponsor['name']
                         G.nodes[cosponsor_id]['state'] = cosponsor['state']
-                        G.nodes[cosponsor_id]['party'] = party_lookup[cosponsor_id]['party']
+                        G.nodes[cosponsor_id]['party'] = get_party(cosponsor_id)
                         G.nodes[cosponsor_id]['type'] = 'legislator'
 
                     sponsors.append(cosponsor_id)
@@ -111,8 +77,9 @@ def generate_bipartite_graph(path, congress, origins):
                     # Add new edge if it doesn't exist
                     if not G.has_edge(bill_id, sponsor):
                         G.add_edge(bill_id, sponsor, weight=1)
-    # print(counter)
     return G
+
+
 def generate_graph(path, congress, origins):
     assert 93 <= congress < 116, 'Not a valid congress'
 
@@ -142,6 +109,7 @@ def generate_graph(path, congress, origins):
 
                 # Check if sponsor data included
                 # e.x. /98/hjres/hjres308 doesn't have sponsor
+                # '01594' is problematic in house 106
                 if data['sponsor'] == None:
                     continue
                 sponsors = []
@@ -170,11 +138,16 @@ def generate_graph(path, congress, origins):
                     else:
                         w = G[u][v]['weight']
                         G.add_edge(u, v, weight=w+1)
-    #print(counter)
     return G
+
 
 def generate_digraph(path, congress, origins):
     """
+    Generate directed graph in the form of
+    https://www.sciencedirect.com/science/article/pii/S037843710701206X?via%3Dihub
+
+    Used for checking data collection process
+
     :param path: file path to directory containing data and legislators directories
     :param congress: integer between 93 and 115
     :param origins: iterable of origins
@@ -238,7 +211,10 @@ def generate_digraph(path, congress, origins):
     print(counter)
     return G
 
-
+# DANGEROUS
+# USE WITH CAUTION
+# SOME ARE HAND-CURATED
+'''
 def generate_bioguide_lookup(path):
     """
     Generate lookup tables for bioguide and thomas ids
@@ -271,7 +247,7 @@ def generate_bioguide_lookup(path):
         fout.write(json.dumps(bioguide_lookup))
     with open(path+'party_lookup', 'w') as fout:
         fout.write(json.dumps(party_lookup))
-
+'''
 #generate_bioguide_lookup('/Users/alexray/Documents/data/legislators/')
 #generate_graph('/Users/alexray/Documents/data/', 100, ['s', 'sconres', 'sjres', 'sres', 'amendments'])
 #generate_graph('/Users/alexray/Documents/data/', 98, ['hr', 'hconres', 'hjres', 'hres'])
