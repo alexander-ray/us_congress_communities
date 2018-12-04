@@ -1,16 +1,28 @@
 from data_parser import generate_graph, generate_digraph, generate_bipartite_graph
 import numpy as np
 import networkx as nx
-import matplotlib.pyplot as plt
 import csv
 import igraph
+from NMI import calc_nmi
 
 
 def update_nodes_to_numeric(G):
+    """
+    Converts networkx nodes to numeric, setting 'bioguide' to be old node label
+    :param G: nx.Graph
+    :return: nx.Graph
+    """
     return nx.convert_node_labels_to_integers(G, label_attribute='bioguide')
 
 
 def calculate_modularity(G, degrees, s):
+    """
+    Helper function to calculate weighted modularity. Same result as iGraph, but slower
+    :param G: np array adjacency matrix
+    :param degrees: ordered list of degrees
+    :param s: ordered list of group labels
+    :return: modularity score Q
+    """
     two_m = np.sum(degrees)
     num_nodes = degrees.size
     acc = 0
@@ -22,11 +34,15 @@ def calculate_modularity(G, degrees, s):
 
 
 def generate_membership_list(nodes):
+    """
+    Helper function to generate ordered list of group labels from Networkx nodeset
+    :param nodes: Networkx nodes
+    :return: ordered list of group labels
+    """
     s = []
     for i in nodes:
         party = nodes[i]['party']
-        if 'Byrd, Harry F.,  Jr.' in nodes[i]['name']:
-            party = 'Independent'
+        # Zhang et al. assigns non-democrats to the the republican group
         if 'Democrat' in party:
             s.append(0)
         else:
@@ -36,10 +52,11 @@ def generate_membership_list(nodes):
 
 house_names = ['hr', 'hconres', 'hjres', 'hres', 'hamendments']
 senate_names = ['s', 'sconres', 'sjres', 'sres', 'samendments']
+chamber = 'senate'
 
 mod_arr = []
 congresses = list(range(96, 116))
-for senate in congresses:
+for congress in congresses:
     # Check against "truth" in https://www.sciencedirect.com/science/article/pii/S037843710701206X?via%3Dihub
     '''
     G = generate_digraph('/Users/alexray/Documents/data/', senate, senate_names)
@@ -48,11 +65,14 @@ for senate in congresses:
     print(avg_degree)
     print(nx.average_shortest_path_length(G))
     '''
-
-    G_bipartite = generate_bipartite_graph('/Users/alexray/Documents/data/', senate, senate_names)
+    if chamber == 'house':
+        G_bipartite = generate_bipartite_graph('/Users/alexray/Documents/data/', congress, house_names)
+    else:
+        G_bipartite = generate_bipartite_graph('/Users/alexray/Documents/data/', congress, senate_names)
     G_bipartite= update_nodes_to_numeric(G_bipartite)
     legislators = [node for node in G_bipartite.nodes if G_bipartite.nodes[node]['type'] == 'legislator']
     G_proj = nx.bipartite.weighted_projected_graph(G_bipartite, legislators)
+    # Uncomment to include self-loops
     #for node in G_proj.nodes:
     #    G_proj.add_edge(node, node, weight=G_bipartite.degree[node])
     A = nx.to_numpy_array(G_proj, nodelist=G_proj.nodes)
@@ -64,8 +84,19 @@ for senate in congresses:
     g.es['weight'] = A[A.nonzero()]
     g.vs['label'] = list(G_proj.nodes)
     mod = g.modularity(membership=s, weights='weight')
-    max_mod = g.community_leading_eigenvector(clusters=None, weights='weight').modularity
+    eig_result = g.community_leading_eigenvector(clusters=None, weights='weight')
+    max_mod = eig_result.modularity
 
-    with open('senate_party_mod_w_max_no_self.csv', 'a') as f:
+    eig_s = []
+    for i in range(len(G_proj)):
+        j = 0
+        for group in eig_result:
+            if i in group:
+                eig_s.append(j)
+                break
+            j += 1
+
+    # Uncomment to write results to csv for later use
+    with open('senate_nmi_no_self.csv', 'a') as f:
         writer = csv.writer(f)
-        writer.writerow([senate, mod, max_mod])
+        writer.writerow([congress, calc_nmi(s, eig_s)])
