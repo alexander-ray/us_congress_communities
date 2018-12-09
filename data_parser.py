@@ -35,7 +35,7 @@ def generate_bipartite_graph(path, congress, origins):
     counter = 0
     bill_id_counter = 1
     for origin in origins:
-        # Assumes dir structure of ./data/congress_num/bills/origin_indicator/*/data.json
+        # Assumes dir structure of ./data/bills/CONGRESS_NUM/bills/origin_indicator/*/data.json
         dir_path = path + 'bills/' + str(congress) + '/' + origin + '/*/data.json'
         data_files = glob.glob(dir_path)
         for file in data_files:
@@ -71,6 +71,7 @@ def generate_bipartite_graph(path, congress, origins):
                 if bill_id not in G:
                     G.add_node(bill_id)
                     G.nodes[bill_id]['type'] = 'bill'
+                    G.nodes[bill_id]['subject'] = data['subjects_top_term']
 
                 for sponsor in sponsors:
                     # for u, v in itertools.combinations(sponsors, r=2):
@@ -100,7 +101,7 @@ def generate_graph(path, congress, origins):
 
     counter = 0
     for origin in origins:
-        # Assumes dir structure of ./data/congress_num/bills/origin_indicator/*/data.json
+        # Assumes dir structure of ./data/bills/CONGRESS_NUM/bills/origin_indicator/*/data.json
         dir_path = path + 'bills/' + str(congress) + '/' + origin + '/*/data.json'
         data_files = glob.glob(dir_path)
         for file in data_files:
