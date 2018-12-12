@@ -74,6 +74,7 @@ def apply_threshold(G, num_legislators, threshold):
     G.remove_nodes_from(nodes_to_remove)
     return G
 
+path = 'C:/Users/David Crosswy/Documents/New folder/updated-data/data/'
 
 house_names = ['hr', 'hconres', 'hjres', 'hres', 'hamendments']
 #senate_names = ['s', 'sconres', 'sjres', 'sres', 'samendments']
@@ -96,9 +97,9 @@ for threshold in thresholds:
         print(nx.average_shortest_path_length(G))
         '''
         if chamber == 'house':
-            G_bipartite = generate_bipartite_graph('/Users/alexray/Documents/data/', congress, house_names)
+            G_bipartite = generate_bipartite_graph(path, congress, house_names)
         else:
-            G_bipartite = generate_bipartite_graph('/Users/alexray/Documents/data/', congress, senate_names)
+            G_bipartite = generate_bipartite_graph(path, congress, senate_names)
         G_bipartite= update_nodes_to_numeric(G_bipartite)
         legislators = [node for node in G_bipartite.nodes if G_bipartite.nodes[node]['type'] == 'legislator']
         if threshold is not None:
@@ -128,8 +129,10 @@ for threshold in thresholds:
                     eig_s.append(j)
                     break
                 j += 1
+    print ("Results")
+    print ("Threshold: ", threshold,"\tModularity: ", mod, "\tMax Modularity: ", max_mod)
 
         # Uncomment to write results to csv for later use
-        with open('./data/senate_thresholds_no_self_bills.csv', 'a') as f:
-            writer = csv.writer(f)
-            writer.writerow([threshold, congress, mod, max_mod])
+        # with open('./data/senate_thresholds_no_self_bills.csv', 'a') as f:
+        #     writer = csv.writer(f)
+        #     writer.writerow([threshold, congress, mod, max_mod])
