@@ -70,8 +70,8 @@ def congress_analysis():
     senate_names = ['s']
     congresses = list(range(96, 116))
 
-    # df = chamber_analysis(congresses, house_names)
-    # df.to_csv('/home/eitri/Documents/house_output.csv', encoding='utf-8')
+    df = chamber_analysis(congresses, house_names)
+    df.to_csv('/home/eitri/Documents/house_output.csv', encoding='utf-8')
 
     df = chamber_analysis(congresses, senate_names)
     df.to_csv('/home/eitri/Documents/senate_output.csv', encoding='utf-8')
