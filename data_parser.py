@@ -5,6 +5,14 @@ import itertools
 
 
 def generate_bipartite_graph(path, congress, origins):
+    """
+    Method to generate a bipartite legislator-legislation graph for a given congress
+
+    :param path: Absolute path to data files
+    :param congress: Numerical congress number
+    :param origins: List of types of legislation to include
+    :return: nx bipartite graph
+    """
     assert 93 <= congress < 116, 'Not a valid congress'
 
     G = nx.Graph()
@@ -35,7 +43,6 @@ def generate_bipartite_graph(path, congress, origins):
     counter = 0
     bill_id_counter = 1
     for origin in origins:
-        # Assumes dir structure of ./data/congress_num/bills/origin_indicator/*/data.json
         dir_path = path + 'bills/' + str(congress) + '/' + origin + '/*/data.json'
         data_files = glob.glob(dir_path)
         for file in data_files:
@@ -77,67 +84,6 @@ def generate_bipartite_graph(path, congress, origins):
                     # Add new edge if it doesn't exist
                     if not G.has_edge(bill_id, sponsor):
                         G.add_edge(bill_id, sponsor, weight=1)
-    return G
-
-
-def generate_graph(path, congress, origins):
-    assert 93 <= congress < 116, 'Not a valid congress'
-
-    G = nx.Graph()
-
-    with open(path+'legislators/bioguide_lookup', 'r') as f:
-        bioguide_lookup = json.load(f)
-    with open(path+'legislators/party_lookup', 'r') as f:
-        party_lookup = json.load(f)
-
-    def get_bioguide(d):
-        if 'bioguide_id' in d:
-            return d['bioguide_id']
-        return bioguide_lookup[d['thomas_id']]
-
-    def get_party(bioguide):
-        return party_lookup[bioguide]
-
-    counter = 0
-    for origin in origins:
-        # Assumes dir structure of ./data/congress_num/bills/origin_indicator/*/data.json
-        dir_path = path + 'bills/' + str(congress) + '/' + origin + '/*/data.json'
-        data_files = glob.glob(dir_path)
-        for file in data_files:
-            with open(file, 'r') as f:
-                data = json.load(f)
-
-                # Check if sponsor data included
-                # e.x. /98/hjres/hjres308 doesn't have sponsor
-                # '01594' is problematic in house 106
-                if data['sponsor'] == None:
-                    continue
-                sponsors = []
-                sponsor_id = get_bioguide(data['sponsor'])
-                if sponsor_id not in G:
-                    G.add_node(sponsor_id)
-                    G.nodes[sponsor_id]['name'] = data['sponsor']['name']
-                    G.nodes[sponsor_id]['state'] = data['sponsor']['state']
-                    G.nodes[sponsor_id]['party'] = party_lookup[sponsor_id]['party']
-                sponsors.append(sponsor_id)
-                for cosponsor in data['cosponsors']:
-                    cosponsor_id = get_bioguide(cosponsor)
-                    if cosponsor_id not in G:
-                        G.add_node(cosponsor_id)
-                        G.nodes[cosponsor_id]['name'] = cosponsor['name']
-                        G.nodes[cosponsor_id]['state'] = cosponsor['state']
-                        G.nodes[cosponsor_id]['party'] = party_lookup[cosponsor_id]['party']
-                    sponsors.append(cosponsor_id)
-
-                for u, v in itertools.combinations_with_replacement(sponsors, r=2):
-                #for u, v in itertools.combinations(sponsors, r=2):
-                    # Add new edge if it doesn't exist
-                    if not G.has_edge(u, v):
-                        G.add_edge(u, v, weight=1)
-                    # Otherwise, update weight
-                    else:
-                        w = G[u][v]['weight']
-                        G.add_edge(u, v, weight=w+1)
     return G
 
 
@@ -248,6 +194,3 @@ def generate_bioguide_lookup(path):
     with open(path+'party_lookup', 'w') as fout:
         fout.write(json.dumps(party_lookup))
 '''
-#generate_bioguide_lookup('/Users/alexray/Documents/data/legislators/')
-#generate_graph('/Users/alexray/Documents/data/', 100, ['s', 'sconres', 'sjres', 'sres', 'amendments'])
-#generate_graph('/Users/alexray/Documents/data/', 98, ['hr', 'hconres', 'hjres', 'hres'])
