@@ -1,2 +1,2 @@
 # us_congress_communities
-Communities Across U.S. Congress Cosponsorship Networks
+Repository for the code of an analysis on communities in congressional cosponsorship networks. The main branch contains most of the basic data collection code (`scraper.py`, `data_parser.py`), analysis code (`analysis.py`), and some very scattered plotting code (`plotting.py`). The bill analysis branch includes additional code used for work on modularity with different legislative subjects as well as some statistical analyses.
