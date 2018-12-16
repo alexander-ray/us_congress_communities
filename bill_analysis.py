@@ -52,6 +52,15 @@ def analyze_graph(G_bipartite):
     
     return subject_modularities
 
+def analyze_graph_no_filter(G_bipartite):
+    node_types = generate_attribute_dict(G_bipartite, 'type')
+    legislators = node_types['legislator']
+
+    G_proj = perform_projection(G_bipartite, 'legislator')
+    mod, _ = calculate_weighted_modularity(G_proj)
+    
+    return mod
+
 def chamber_analysis(congresses, file_names):
     df = pd.DataFrame(columns=['CONGRESS'])
 
@@ -64,6 +73,28 @@ def chamber_analysis(congresses, file_names):
     
     return df
 
+def total_modularity_analysis(congresses, file_names):
+    df = pd.DataFrame(columns=['CONGRESS', 'MODULARITY'])
+
+    for congress in congresses:
+        G_bipartite = generate_bipartite_graph('/home/eitri/git/us_congress_communities/data/', congress, file_names)
+        congress_mod = analyze_graph_no_filter(G_bipartite)
+        df.loc[-1] = [congress, congress_mod]
+        df.index = df.index + 1
+        df.sort_index()
+    chamber_analysis
+    return df
+
+def total_congress_analysis():
+    house_names = ['hr']
+    senate_names = ['s']
+    congresses = list(range(96, 116))
+
+    df = total_modularity_analysis(congresses, house_names)
+    df.to_csv('/home/eitri/Documents/house_modularities.csv', encoding='utf-8')
+
+    df = total_modularity_analysis(congresses, senate_names)
+    df.to_csv('/home/eitri/Documents/senate_modularities.csv', encoding='utf-8')
 
 def congress_analysis():
     house_names = ['hr']
@@ -76,4 +107,5 @@ def congress_analysis():
     df = chamber_analysis(congresses, senate_names)
     df.to_csv('/home/eitri/Documents/senate_output.csv', encoding='utf-8')
 
-congress_analysis()
+# congress_analysis()
+total_congress_analysis()
