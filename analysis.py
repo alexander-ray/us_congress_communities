@@ -1,5 +1,4 @@
-#from data_parser import generate_graph, generate_digraph, generate_bipartite_graph
-from david_data_parser import generate_bipartite_graph
+from data_parser import generate_digraph, generate_bipartite_graph
 import numpy as np
 import networkx as nx
 import csv
@@ -150,7 +149,7 @@ def gt_graph_from_networkx_bipartite(G_bipartite):
     edges[:, 0:2] = np.transpose(np.nonzero(A))
     for e in range(edges.shape[0]):
         edges[e, 2] = A[edges[e, 0], edges[e, 1]]
-    g = gt.Graph(directed=False)
+    #g = gt.Graph(directed=False)
     # https: // stackoverflow.com / questions / 45821741 /
     weight = g.new_edge_property('int')
     eprops = [weight]
@@ -167,17 +166,17 @@ def gt_graph_from_networkx_bipartite(G_bipartite):
 
     return g
 
-#house_names = ['hr', 'hconres', 'hjres', 'hres', 'hamendments']
-#senate_names = ['s', 'sconres', 'sjres', 'sres', 'samendments']
-senate_names = ['s']
-house_names = ['hr']
-chamber = 'senate'
-include_self_loops = False
+house_names = ['hr', 'hconres', 'hjres', 'hres', 'hamendments']
+senate_names = ['s', 'sconres', 'sjres', 'sres', 'samendments']
+#senate_names = ['s']
+#house_names = ['hr']
+chamber = 'house'
+include_self_loops = True
 #thresholds = [0.6, 0.7, 0.8, 0.9, 1.0]
 thresholds = [None]
 
 mod_arr = []
-congresses = list(range(97, 98))
+congresses = list(range(96, 116))
 for threshold in thresholds:
     for congress in congresses:
         if chamber == 'house':
@@ -222,9 +221,10 @@ for threshold in thresholds:
         print(max_mod)
         
         # Uncomment to write results to csv for later use
-        # with open('./data/' + chamber + '_party_mod_w_max_self.csv', 'a') as f:
-        #    writer = csv.writer(f)
-        #    writer.writerow([congress, mod, max_mod])
+        with open('./data/' + chamber + '_party_mod_w_max_self_check.csv', 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([congress, mod, max_mod])
+
 
         '''
         # GRAPH-TOOL CODE
