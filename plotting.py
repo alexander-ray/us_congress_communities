@@ -5,21 +5,38 @@ import numpy as np
 chamber = 'senate'
 xlabel = 'Senate'
 ylabel = 'Party Modularity'
-title = 'Party modularity across different thresholds'
+title = 'Modularity of bills passing chamber'
 
 
-congress_mask = set(range(96, 116))
+congress_mask = set(range(97, 116))
 data = []
-thresholds = {0.6: [], 0.7: [], 0.8: [], 0.9: [], 1.0: []}
-congress = list(range(96, 116))
-with open('./data/' + chamber + '_thresholds_no_self_bills.csv', 'r') as f:
+
+modularities = []
+
+# thresholds = {0.6: [], 0.7: [], 0.8: [], 0.9: [], 1.0: []}
+congress = list(range(97, 116))
+
+files = ['senate_bills_all.csv', 'senate_bills_passed.csv', 'house_bills_all.csv', 'house_bills_passed.csv']
+
+with open(files[0], 'r') as f:
     for line in f:
         line = line.strip().split(',')
-        thres = float(line[0]); mod = float(line[2]); mod_max = float(line[3])
-        thresholds[thres].append((mod, mod_max))
+        if line[0] == '':
+            continue
+        else:
+            modularities.append(float(line[3]))
+            # print ('chamber: ', line[0],'\tCongress: ',line[1],'\tModularity: ', line[2],'\tmax mod: ', line[3])
+plt.plot(congress, modularities, label='All Bills')
 
-for thres in thresholds.keys():
-    plt.plot(congress, [t[0] for t in thresholds[thres]], label=str(thres))
+modularities = []
+with open(files[1], 'r') as f:
+    for line in f:
+        line = line.strip().split(',')
+        if line[0] == '':
+            continue
+        else:
+            modularities.append(float(line[3]))
+plt.plot(congress, modularities, label='Bills Passing Chamber')
 
 '''
 with open('./data/' + chamber + '_senate_thresholds_no_self.csv', 'r') as f:

@@ -76,61 +76,68 @@ def apply_threshold(G, num_legislators, threshold):
 
 path = 'C:/Users/David Crosswy/Documents/New folder/updated-data/data/'
 
-house_names = ['hr', 'hconres', 'hjres', 'hres', 'hamendments']
+#house_names = ['hr', 'hconres', 'hjres', 'hres', 'hamendments']
 #senate_names = ['s', 'sconres', 'sjres', 'sres', 'samendments']
 senate_names = ['s']
+house_names = ['hr']
 chamber = 'senate'
+include_self_loops = False
 #thresholds = [0.6, 0.7, 0.8, 0.9, 1.0]
-thresholds = [0.6, 0.7, 0.8, 0.9, 1.0]
+thresholds = [0.6]
 
 mod_arr = []
-congresses = list(range(96, 116))
-for threshold in thresholds:
-    print(threshold)
-    for congress in congresses:
-        # Check against "truth" in https://www.sciencedirect.com/science/article/pii/S037843710701206X?via%3Dihub
-        '''
-        G = generate_digraph('/Users/alexray/Documents/data/', senate, senate_names)
-        print(len(G))
-        avg_degree = np.mean([deg[1] for deg in G.in_degree])
-        print(avg_degree)
-        print(nx.average_shortest_path_length(G))
-        '''
-        if chamber == 'house':
-            G_bipartite = generate_bipartite_graph(path, congress, house_names)
-        else:
-            G_bipartite = generate_bipartite_graph(path, congress, senate_names)
-        G_bipartite= update_nodes_to_numeric(G_bipartite)
-        legislators = [node for node in G_bipartite.nodes if G_bipartite.nodes[node]['type'] == 'legislator']
-        if threshold is not None:
-            G_bipartite = apply_threshold(G_bipartite, len(legislators), threshold)
-        G_proj = nx.bipartite.weighted_projected_graph(G_bipartite, legislators)
-        # Uncomment to include self-loops
-        #for node in G_proj.nodes:
-        #    G_proj.add_edge(node, node, weight=G_bipartite.degree[node])
+congresses = list(range(97, 116))
+# for threshold in thresholds:
+    # print(threshold)
 
-        A = nx.to_numpy_array(G_proj, nodelist=G_proj.nodes)
+'''
+# Check against "truth" in https://www.sciencedirect.com/science/article/pii/S037843710701206X?via%3Dihub
+G = generate_digraph('/Users/alexray/Documents/data/', senate, senate_names)
+print(len(G))
+avg_degree = np.mean([deg[1] for deg in G.in_degree])
+print(avg_degree)
+print(nx.average_shortest_path_length(G))
+'''
 
-        s = generate_membership_list(G_proj.nodes)
+for congress in congresses:
+    if chamber == 'house':
+        G_bipartite = generate_bipartite_graph(path, congress, house_names)
+    else:
+        G_bipartite = generate_bipartite_graph(path, congress, senate_names)
+    G_bipartite= update_nodes_to_numeric(G_bipartite)
+    legislators = [node for node in G_bipartite.nodes if G_bipartite.nodes[node]['type'] == 'legislator']
+    # if threshold is not None:
+    #     G_bipartite = apply_threshold(G_bipartite, len(legislators), threshold)
+    G_proj = nx.bipartite.weighted_projected_graph(G_bipartite, legislators)
+    if include_self_loops:
+        for node in G_proj.nodes:
+            G_proj.add_edge(node, node, weight=G_bipartite.degree[node])
 
-        # Networkx to igraph: https://stackoverflow.com/questions/29655111/
-        g = igraph.Graph.Adjacency((A > 0).tolist())
-        g.es['weight'] = A[A.nonzero()]
-        g.vs['label'] = list(G_proj.nodes)
-        mod = g.modularity(membership=s, weights='weight')
-        eig_result = g.community_leading_eigenvector(clusters=None, weights='weight')
-        max_mod = eig_result.modularity
+    A = nx.to_numpy_array(G_proj, nodelist=G_proj.nodes)
 
-        eig_s = []
-        for i in range(len(G_proj)):
-            j = 0
-            for group in eig_result:
-                if i in group:
-                    eig_s.append(j)
-                    break
-                j += 1
-    print ("Results")
-    print ("Threshold: ", threshold,"\tModularity: ", mod, "\tMax Modularity: ", max_mod)
+    s = generate_membership_list(G_proj.nodes)
+
+    # Networkx to igraph: https://stackoverflow.com/questions/29655111/
+    g = igraph.Graph.Adjacency((A > 0).tolist())
+    g.es['weight'] = A[A.nonzero()]
+    g.vs['label'] = list(G_proj.nodes)
+    mod = g.modularity(membership=s, weights='weight')
+    eig_result = g.community_leading_eigenvector(clusters=None, weights='weight')
+    max_mod = eig_result.modularity
+
+    eig_s = []
+    for i in range(len(G_proj)):
+        j = 0
+        for group in eig_result:
+            if i in group:
+                eig_s.append(j)
+                break
+            j += 1
+    with open('senate_bills_all.csv', 'a') as f:
+        writer = csv.writer(f)
+        writer.writerow([chamber, congress, mod, max_mod])
+
+    print ("Chamber: ", chamber, "\tCongress: ", congress, "\tModularity: ", mod, "\tMax Modularity: ", max_mod)
 
         # Uncomment to write results to csv for later use
         # with open('./data/senate_thresholds_no_self_bills.csv', 'a') as f:

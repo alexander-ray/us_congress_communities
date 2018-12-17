@@ -7,6 +7,12 @@ import itertools
 def generate_bipartite_graph(path, congress, origins):
     assert 93 <= congress < 116, 'Not a valid congress'
 
+    #key word to identify if bill has passed appropriate chamber
+    if origins[0] == 'hr':
+        passed_chamber_key = 'PASS_OVER:HOUSE'
+    else:
+        passed_chamber_key = 'PASS_OVER:SENATE'
+
     G = nx.Graph()
 
     with open(path + 'legislators/bioguide_lookup', 'r') as f:
@@ -34,13 +40,32 @@ def generate_bipartite_graph(path, congress, origins):
 
     counter = 0
     bill_id_counter = 1
+
+    bill_counter = 0.0
+    bills_passed_counter = 0.0
+    # print ('Congress: ', congress)
     for origin in origins:
         # Assumes dir structure of ./data/congress_num/bills/origin_indicator/*/data.json
         dir_path = path + 'bills/' + str(congress) + '/' + origin + '/*/data.json'
         data_files = glob.glob(dir_path)
         for file in data_files:
+            bill_counter += 1
             with open(file, 'r') as f:
                 data = json.load(f)
+                # string_status = ''
+                # for i in range(0, len(data['actions'])):
+                #     if 'status' not in data['actions'][i]:
+                #         continue
+                #     else:
+                #         string_status = data['actions'][i]['status']
+                #         # with open('senate_key_words.txt', 'a') as f:
+                #         #     string_status1 = data['actions'][i]['text'] + '\n'
+                #         #     f.write(string_status1)
+                #         if string_status == passed_chamber_key:
+                #             bills_passed_counter += 1
+                #             break
+
+                # if string_status == passed_chamber_key:
 
                 # Check if sponsor data included
                 # e.x. /98/hjres/hjres308 doesn't have sponsor
@@ -77,6 +102,8 @@ def generate_bipartite_graph(path, congress, origins):
                     # Add new edge if it doesn't exist
                     if not G.has_edge(bill_id, sponsor):
                         G.add_edge(bill_id, sponsor, weight=1)
+    # if bill_counter != 0:
+    #     print ("Total Bills: ", bill_counter,"\t Bills Passed: ", bills_passed_counter,"\tpercent bills pass", bills_passed_counter/bill_counter)
     return G
 
 
