@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 import csv
 import igraph
+from sklearn.metrics import adjusted_mutual_info_score
 from NMI import calc_nmi
 import math
 #import graph_tool.all as gt
@@ -171,7 +172,7 @@ senate_names = ['s', 'sconres', 'sjres', 'sres', 'samendments']
 #senate_names = ['s']
 #house_names = ['hr']
 chamber = 'house'
-include_self_loops = True
+include_self_loops = False
 #thresholds = [0.6, 0.7, 0.8, 0.9, 1.0]
 thresholds = [None]
 
@@ -221,9 +222,9 @@ for threshold in thresholds:
         print(max_mod)
         
         # Uncomment to write results to csv for later use
-        with open('./data/' + chamber + '_party_mod_w_max_self_check.csv', 'a') as f:
+        with open('./data/' + chamber + '_ami_no_self.csv', 'a') as f:
             writer = csv.writer(f)
-            writer.writerow([congress, mod, max_mod])
+            writer.writerow([congress, adjusted_mutual_info_score(s, eig_s)])
 
 
         '''

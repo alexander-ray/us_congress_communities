@@ -1,8 +1,19 @@
 # Figure setup
 import matplotlib as mpl
+from cycler import cycler
+import palettable
+import palettable.cmocean.sequential
+import palettable.tableau
+import palettable.colorbrewer.qualitative
+import palettable.wesanderson
 
 black = '#2d2d2d'
 white = '#f5f5f5'
+
+# Trying to make plots look OK
+# Colors
+mpl.rcParams['axes.prop_cycle'] = cycler('color',
+                                         palettable.cmocean.diverging.Delta_9.mpl_colors)
 # Trying to make plots look OK
 
 # Avoid cutting off labels
@@ -22,7 +33,7 @@ mpl.rcParams['figure.facecolor'] = white
 # Legend
 mpl.rcParams['legend.framealpha'] = 0
 mpl.rcParams['legend.borderpad'] = 0
-mpl.rcParams['legend.markerscale'] = 0.05
+mpl.rcParams['legend.markerscale'] = 1.2
 mpl.rcParams['legend.handlelength'] = 0.8
 mpl.rcParams['legend.frameon'] = False
 mpl.rcParams['legend.handletextpad'] = 0.2
