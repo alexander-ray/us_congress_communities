@@ -1,3 +1,4 @@
+*.ipynb
 # Data files
 data/
 legislators/
@@ -6,6 +7,7 @@ legislators/
 .idea/
 plots/
 .vscode/
+old_plots/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
