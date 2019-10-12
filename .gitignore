@@ -1,4 +1,4 @@
-.ipynb
+*.ipynb
 # Data files
 data/
 legislators/
