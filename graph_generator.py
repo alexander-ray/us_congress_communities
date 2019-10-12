@@ -17,7 +17,7 @@ class GraphGenerator:
         """
         Method to generate a bipartite legislator-legislation graph for a given congress
 
-        :param path: Absolute path to data files
+        :param base_path: Absolute path to data files
         :param congress: Numerical congress number
         :param origins: List of types of legislation to include
         :return: nx bipartite graph
