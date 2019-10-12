@@ -1,6 +1,3 @@
-import numpy as np
-
-
 def calc_nmi(l1, l2):
     """
     Function to calculate NMI
