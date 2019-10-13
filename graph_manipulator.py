@@ -57,22 +57,17 @@ class GraphManipulator:
         return G
 
     @staticmethod
-    def one_mode_projection_from_bipartite(G_bipartite, include_self_loops):
+    def one_mode_projection_from_bipartite(G_bipartite, projected_node_type='legislator'):
         """
         Create one-mode projection onto legislators from bipartite legislators-legislation network
 
         :param G_bipartite: Original bipartite network
-        :param include_self_loops: Boolean to indicate whether or not to add self loops to projection
+        :param projected_node_type: string designating type of projected nodes
         :return: Projection with numerical node labels
         """
-        legislators = [node for node in G_bipartite.nodes
-                       if G_bipartite.nodes[node]['type'] == 'legislator']
+        legislators = [node for node in G_bipartite.nodes if G_bipartite.nodes[node]['type'] == projected_node_type]
         G_proj = nx.bipartite.weighted_projected_graph(G_bipartite, legislators)
-
-        if include_self_loops:
-            for node in G_proj.nodes:
-                G_proj.add_edge(node, node, weight=G_bipartite.degree[node])
-        return nx.convert_node_labels_to_integers(G_proj, label_attribute='bioguide')
+        return G_proj
 
     @staticmethod
     def igraph_from_networkx_one_mode(G):

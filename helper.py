@@ -1,5 +1,7 @@
-class Helper:
+import networkx as nx
+from graph_manipulator import GraphManipulator
 
+class Helper:
     @staticmethod
     def generate_membership_list_from_party(nodes):
         """
@@ -35,3 +37,22 @@ class Helper:
                     break
                 j += 1
         return eig_s
+
+    @staticmethod
+    def generate_attribute_dict(G, attribute_name):
+        inv_attribute_dict = nx.get_node_attributes(G, attribute_name)
+        attribute_dict = {}
+        for k, v in inv_attribute_dict.items():
+            attribute_dict.setdefault(v, []).append(k)
+
+        return attribute_dict
+
+    @staticmethod
+    def calculate_weighted_modularities(G):
+        s = Helper.generate_membership_list_from_party(G.nodes)
+        g = GraphManipulator.igraph_from_networkx_one_mode(G)
+        mod = g.modularity(membership=s, weights='weight')
+        eig_result = g.community_leading_eigenvector(clusters=None, weights='weight')
+        max_mod = eig_result.modularity
+
+        return mod, max_mod
