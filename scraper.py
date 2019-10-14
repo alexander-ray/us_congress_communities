@@ -1,10 +1,37 @@
-from urllib.request import Request, urlopen
-from bs4 import BeautifulSoup
-import json
-import os
 import re
-import csv
+from urllib.request import Request, urlopen
 
+from bs4 import BeautifulSoup
+
+HOUSE_COUNT_ID = 'facetItemchamberHousecount'
+SENATE_COUNT_ID = 'facetItemchamberSenatecount'
+TYPES = ['bills', 'amendments', 'resolutions', 'joint-resolutions', 'concurrent-resolutions']
+COUNT_IDS = {'house': HOUSE_COUNT_ID, 'senate': SENATE_COUNT_ID}
+CONGRESS_URL_SEARCH_FORMAT = 'https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22{}%22%2C%22type%22%3A%22{}%22%7D'
+
+def get_legislation_counts(congresses=range(93, 117)):
+    print(f'Congresses: {list(congresses)}')
+    header = {'User-Agent': 'Mozilla/5.0'}
+
+    legislation_counts = {}
+    for congress in congresses:
+        print(f'Congress: {congress}')
+        leg_type_counts = {}
+        for leg_type in TYPES:
+            print(f'Legislation type: {leg_type}')
+            req = Request(CONGRESS_URL_SEARCH_FORMAT.format(congress, leg_type), headers=header)
+            page = urlopen(req)
+            soup = BeautifulSoup(page, 'lxml')
+            counts = {}
+            for k, v in COUNT_IDS.items():
+                spans = soup.find_all('span', {'class': 'count', 'id': v})
+                if len(spans) == 0:
+                    print(f'No counts for {leg_type} in congress {congress}')
+                    continue
+                counts[k] = int(''.join([s for s in spans[0].contents[0] if s.isdigit()]))
+            leg_type_counts[leg_type] = counts
+        legislation_counts[congress] = leg_type_counts
+    return legislation_counts
 
 def create_amendment_dict(base_url, party_lookup):
     """
@@ -60,7 +87,7 @@ def create_amendment_url(congress, chamber, number):
     return url
 
 
-
+'''
 path = '/Users/alexray/Documents/data/'
 
 with open(path+'legislators/party_lookup', 'r') as f:
@@ -73,15 +100,6 @@ numbers = [(3517, 99), (3773, 100), (3229, 101),
            (4924, 111), (3450, 112), (4126, 113),
            (5186, 114), (4062, 115)]
 
-'''
-numbers = [(1006, 97), (1092, 98), (1243, 99),
-           (917, 100), (911, 101), (891, 102),
-           (942, 103), (1372, 104), (931, 105),
-           (1067, 106), (632, 107), (812, 108),
-           (1222, 109), (1185, 110), (786, 111),
-           (1499, 112), (1155, 113), (1487, 114),
-           (978, 115)]
-'''
 for number, congress in numbers:
     leg_ids = list(range(1, number))
     congress = str(congress)
@@ -102,7 +120,8 @@ for number, congress in numbers:
             fout.write(json.dumps(amendment))
 
     print('num errored: ' + str(len(errored)))
-    with open('errored_senate2.csv', 'a') as f:
+    with open('errored_senate3.csv', 'a') as f:
         writer = csv.writer(f)
         writer.writerow([congress])
         writer.writerow(errored)
+'''
