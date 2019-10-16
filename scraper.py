@@ -1,11 +1,16 @@
 import re
+import json
+import os
 from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
 
 HOUSE_COUNT_ID = 'facetItemchamberHousecount'
 SENATE_COUNT_ID = 'facetItemchamberSenatecount'
-TYPES = ['bills', 'amendments', 'resolutions', 'joint-resolutions', 'concurrent-resolutions']
+LEG_COUNT_TYPES = ['bills', 'amendments', 'resolutions', 'joint-resolutions', 'concurrent-resolutions']
+# Type shorthands for use creating paths
+LEG_TYPE_SHORTHAND = {'bills': '', 'amendments': 'amendments', 'concurrent-resolutions': 'conres',
+                  'joint-resolutions': 'jres', 'resolutions': 'res'}
 COUNT_IDS = {'house': HOUSE_COUNT_ID, 'senate': SENATE_COUNT_ID}
 CONGRESS_URL_SEARCH_FORMAT = 'https://www.congress.gov/search?q=%7B%22source%22%3A%22legislation%22%2C%22congress%22%3A%22{}%22%2C%22type%22%3A%22{}%22%7D'
 
@@ -17,7 +22,7 @@ def get_legislation_counts(congresses=range(93, 117)):
     for congress in congresses:
         print(f'Congress: {congress}')
         leg_type_counts = {}
-        for leg_type in TYPES:
+        for leg_type in LEG_COUNT_TYPES:
             print(f'Legislation type: {leg_type}')
             req = Request(CONGRESS_URL_SEARCH_FORMAT.format(congress, leg_type), headers=header)
             page = urlopen(req)
@@ -86,42 +91,92 @@ def create_amendment_url(congress, chamber, number):
           chamber + '/' + str(number) + '/cosponsors'
     return url
 
+def save_legislation(base_path, party_lookup, legislation_id, congress, leg_type, chamber):
+    # Variable for use in paths is the first letter of the chamber + the shorthand code for it
+    path_var = chamber[0] + LEG_TYPE_SHORTHAND[leg_type]
+    # Dir prefixes don't make much sense, but we persevere
+    if leg_type == 'amendments':
+        dir_prefix = 'a'
+    elif leg_type == 'bills' and chamber == 'house':
+        dir_prefix = 'hr'
+    else:
+        dir_prefix = path_var
 
-'''
-path = '/Users/alexray/Documents/data/'
+    if os.path.exists(f'{base_path}/bills/{congress}/{path_var}/{dir_prefix + str(legislation_id)}'):
+        raise RuntimeError('Legislation is already saved')
 
-with open(path+'legislators/party_lookup', 'r') as f:
-    party_lookup = json.load(f)
+    url_path_param = 'amendment' if leg_type == 'amendment' else 'bill'
+    amendment = create_amendment_dict(f'https://www.congress.gov/{url_path_param}/'
+                                      f'{congress}th-congress/{chamber}-{leg_type.rstrip("s")}'
+                                      f'/{legislation_id}/cosponsors', party_lookup)
 
-numbers = [(3517, 99), (3773, 100), (3229, 101),
-           (3442, 102), (2653, 103), (5439, 104),
-           (3842, 105), (4367, 106), (4984, 107),
-           (4088, 108), (5240, 109), (5704, 110),
-           (4924, 111), (3450, 112), (4126, 113),
-           (5186, 114), (4062, 115)]
+    if 'Error 404:' in amendment or 'Exception' in amendment:
+        raise RuntimeError('Error creating amendment')
 
-for number, congress in numbers:
-    leg_ids = list(range(1, number))
-    congress = str(congress)
-    print(congress)
-    errored = []
-    for leg_id in leg_ids:
-        leg_id = str(leg_id)
-        if os.path.exists(path + 'bills/' + str(congress) + '/samendments/a' + leg_id):
-            continue
-        amendment = create_amendment_dict('https://www.congress.gov/amendment/'+str(congress)+'th-congress/senate-amendment/'+leg_id+'/cosponsors', party_lookup)
 
-        if 'Error 404:' in amendment or 'Exception' in amendment:
-            errored.append(leg_id)
-            continue
-        if not os.path.exists(path + 'bills/' + str(congress) + '/samendments/a' + leg_id):
-            os.makedirs(path + 'bills/' + str(congress) + '/samendments/a' + leg_id)
-        with open(path + 'bills/' + str(congress) + '/samendments/a' + leg_id + '/data.json', 'w') as fout:
-            fout.write(json.dumps(amendment))
+    os.makedirs(f'{base_path}/bills/{congress}/{path_var}/{dir_prefix + str(legislation_id)}')
+    with open(f'{base_path}/bills/{congress}/{path_var}/{dir_prefix + str(legislation_id)}/data.json', 'w') as fout:
+        fout.write(json.dumps(amendment))
 
-    print('num errored: ' + str(len(errored)))
-    with open('errored_senate3.csv', 'a') as f:
-        writer = csv.writer(f)
-        writer.writerow([congress])
-        writer.writerow(errored)
-'''
+def save_legislation_wrapper(base_path, congresses=range(93, 117), legislation_counts=None):
+    base_path = base_path.rstrip()
+
+    with open(base_path + '/legislators/party_lookup', 'r') as f:
+        party_lookup = json.load(f)
+
+    if legislation_counts is None:
+        print('Retrieving legislation counts')
+        legislation_counts = get_legislation_counts(congresses)
+    else:
+        print('Using existing legislation counts')
+        legislation_counts = {k:v for k, v in legislation_counts.items() if k in set(congresses)}
+    print('\nRetrieving legislation')
+    for congress, leg_type_dict in legislation_counts.items():
+        print(f'Congress: {congress}')
+        for leg_type, chamber_dict in leg_type_dict.items():
+            for chamber, count in chamber_dict.items():
+                print(f'Attempting to save {count} {leg_type} for congress {congress}')
+                already_saved = 0
+                errored = 0
+                for i in range(1, count+1):
+                    try:
+                        save_legislation(base_path, party_lookup, i, congress, leg_type, chamber)
+                    except RuntimeError as e:
+                        if 'already saved' in str(e):
+                            already_saved += 1
+                        elif 'Error creating amendment' in str(e):
+                            errored += 1
+                        else:
+                            raise RuntimeError()
+                print(f'Saved {count-errored-already_saved} {leg_type} for congress {congress}')
+                print(f'{already_saved} previously saved, {errored} errored')
+
+def merge_lookup_dicts(base_path, path_to_addition):
+    with open(path_to_addition, 'r') as f:
+        new_data = json.load(f)
+
+    with open(base_path+'thomas_lookup', 'r') as f:
+        thomas_lookup = json.load(f)
+    with open(base_path+'bioguide_lookup', 'r') as f:
+        bioguide_lookup = json.load(f)
+    with open(base_path+'party_lookup', 'r') as f:
+        party_lookup = json.load(f)
+
+    for entry in new_data:
+        print(entry)
+        if 'bioguide' in entry['id'] and 'thomas' in entry['id']:
+            thomas_lookup[entry['id']['bioguide']] = entry['id']['thomas']
+            bioguide_lookup[entry['id']['thomas']] = entry['id']['bioguide']
+        elif 'bioguide' in entry['id']:
+            party_lookup[entry['id']['bioguide']] = {
+                'party': entry['terms'][0]['party'],
+                'name': entry['name']['first'] + ' ' + entry['name']['last'],
+                'state': entry['terms'][0]['state']
+            }
+
+    with open(base_path+'thomas_lookup_new', 'w') as fout:
+        fout.write(json.dumps(thomas_lookup))
+    with open(base_path+'bioguide_lookup_new', 'w') as fout:
+        fout.write(json.dumps(bioguide_lookup))
+    with open(base_path+'party_lookup_new', 'w') as fout:
+        fout.write(json.dumps(party_lookup))
