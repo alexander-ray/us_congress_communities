@@ -99,13 +99,14 @@ def save_legislation(base_path, party_lookup, legislation_id, congress, leg_type
         dir_prefix = 'a'
     elif leg_type == 'bills' and chamber == 'house':
         dir_prefix = 'hr'
+        path_var = 'hr'
     else:
         dir_prefix = path_var
 
     if os.path.exists(f'{base_path}/bills/{congress}/{path_var}/{dir_prefix + str(legislation_id)}'):
         raise RuntimeError('Legislation is already saved')
 
-    url_path_param = 'amendment' if leg_type == 'amendment' else 'bill'
+    url_path_param = 'amendment' if leg_type == 'amendments' else 'bill'
     amendment = create_amendment_dict(f'https://www.congress.gov/{url_path_param}/'
                                       f'{congress}th-congress/{chamber}-{leg_type.rstrip("s")}'
                                       f'/{legislation_id}/cosponsors', party_lookup)
@@ -134,8 +135,11 @@ def save_legislation_wrapper(base_path, congresses=range(93, 117), legislation_c
     for congress, leg_type_dict in legislation_counts.items():
         print(f'Congress: {congress}')
         for leg_type, chamber_dict in leg_type_dict.items():
+            # Early congresses don't have amendments, save time
+            if congress < 97 and leg_type == 'amendments':
+                continue
             for chamber, count in chamber_dict.items():
-                print(f'Attempting to save {count} {leg_type} for congress {congress}')
+                print(f'Attempting to save {count} {leg_type} for congress {congress} in the {chamber}')
                 already_saved = 0
                 errored = 0
                 for i in range(1, count+1):
