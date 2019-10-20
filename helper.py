@@ -10,14 +10,19 @@ class Helper:
         :param nodes: Networkx nodes
         :return: ordered list of group labels
         """
+        membership_dict = {}
+        membership_count = 0
         s = []
         for i in nodes:
             party = nodes[i]['party']
-            # Zhang et al. assigns non-democrats to the the republican group
-            if 'Democrat' in party:
-                s.append(0)
+            # note that Zhang et al. assigns non-democrats to the the republican group
+            # We're going off real party
+            if party in membership_dict:
+                s.append(membership_dict[party])
             else:
-                s.append(1)
+                membership_dict[party] = membership_count
+                s.append(membership_count)
+                membership_count += 1
         return s
 
     @staticmethod

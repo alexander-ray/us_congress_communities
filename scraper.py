@@ -1,9 +1,8 @@
-import re
 import json
 import os
 from urllib.request import Request, urlopen
-
 from bs4 import BeautifulSoup
+import re
 
 HOUSE_COUNT_ID = 'facetItemchamberHousecount'
 SENATE_COUNT_ID = 'facetItemchamberSenatecount'
@@ -53,8 +52,12 @@ def create_amendment_dict(base_url, party_lookup):
         page = urlopen(req)
         soup = BeautifulSoup(page, 'lxml')
 
-        sponsor_link = soup.find_all('table', class_='standard01')[0].find(text=re.compile('Sponsor:')).find_next().find('a')['href']
+        tables = soup.find_all('table', class_='standard01')
+        # one of the strange "Reserved Bill"s
+        if len(tables) == 0:
+            return
 
+        sponsor_link = tables[0].find(text=re.compile('Sponsor:')).find_next().find('a')['href']
         assert sponsor_link is not None, 'Can\'t find link to sponsor'
         sponsor_id = sponsor_link.split('/')[-1]
 
@@ -68,12 +71,17 @@ def create_amendment_dict(base_url, party_lookup):
             ret['sponsor']['state'] = text[3].split('-')[1]
         cosponsor_elements = soup.find_all('table', class_='item_table')
         for element in cosponsor_elements:
-            cosponsor_link = element.find('a')['href']
-            id = cosponsor_link.split('/')[-1]
-            tmp = {'bioguide_id':id,
-                   'name': party_lookup[id]['name'],
-                   'state': party_lookup[id]['state']}
-            ret['cosponsors'].append(tmp)
+            # if it exists, is just "cosponsors who withdrew"
+            if len(element.find_all('thead', id='withdrawnThead')) != 0:
+                break
+            cosponsor_links = element.find_all('a', href=True)
+            for cosponsor_link in cosponsor_links:
+                cosponsor_link = cosponsor_link['href']
+                id = cosponsor_link.split('/')[-1]
+                tmp = {'bioguide_id':id,
+                       'name': party_lookup[id]['name'],
+                       'state': party_lookup[id]['state']}
+                ret['cosponsors'].append(tmp)
 
         return ret
     except Exception as e:
@@ -104,16 +112,19 @@ def save_legislation(base_path, party_lookup, legislation_id, congress, leg_type
         dir_prefix = path_var
 
     if os.path.exists(f'{base_path}/bills/{congress}/{path_var}/{dir_prefix + str(legislation_id)}'):
-        raise RuntimeError('Legislation is already saved')
+        raise RuntimeError('already saved')
 
     url_path_param = 'amendment' if leg_type == 'amendments' else 'bill'
-    amendment = create_amendment_dict(f'https://www.congress.gov/{url_path_param}/'
-                                      f'{congress}th-congress/{chamber}-{leg_type.rstrip("s")}'
-                                      f'/{legislation_id}/cosponsors', party_lookup)
+    path = f'https://www.congress.gov/{url_path_param}/' \
+           f'{congress}th-congress/{chamber}-{leg_type.rstrip("s")}'  \
+           f'/{legislation_id}/cosponsors'
+    amendment = create_amendment_dict(path, party_lookup)
+    if amendment is None:
+        return
 
     if 'Error 404:' in amendment or 'Exception' in amendment:
+        print(f'Error saving {path}: {amendment}')
         raise RuntimeError('Error creating amendment')
-
 
     os.makedirs(f'{base_path}/bills/{congress}/{path_var}/{dir_prefix + str(legislation_id)}')
     with open(f'{base_path}/bills/{congress}/{path_var}/{dir_prefix + str(legislation_id)}/data.json', 'w') as fout:
@@ -155,6 +166,17 @@ def save_legislation_wrapper(base_path, congresses=range(93, 117), legislation_c
                 print(f'Saved {count-errored-already_saved} {leg_type} for congress {congress}')
                 print(f'{already_saved} previously saved, {errored} errored')
 
+def gap_checker(dir_path):
+    file_numbers = set()
+
+    for filename in os.listdir(dir_path):
+        file_numbers.add(int(re.findall("\d+", filename)[0]))
+
+    max_num = max(file_numbers)
+    for i in range(1, max_num+1):
+        if i not in file_numbers:
+            print(i)
+
 def merge_lookup_dicts(base_path, path_to_addition):
     with open(path_to_addition, 'r') as f:
         new_data = json.load(f)
@@ -171,7 +193,8 @@ def merge_lookup_dicts(base_path, path_to_addition):
         if 'bioguide' in entry['id'] and 'thomas' in entry['id']:
             thomas_lookup[entry['id']['bioguide']] = entry['id']['thomas']
             bioguide_lookup[entry['id']['thomas']] = entry['id']['bioguide']
-        elif 'bioguide' in entry['id']:
+        # Super early ones don't have party, so we skip
+        elif 'bioguide' in entry['id'] and 'party' in entry['terms'][0]:
             party_lookup[entry['id']['bioguide']] = {
                 'party': entry['terms'][0]['party'],
                 'name': entry['name']['first'] + ' ' + entry['name']['last'],

@@ -46,11 +46,9 @@ class GraphManipulator:
         """
         threshold = math.ceil(threshold * num_legislators)
         nodes_to_remove = []
-        s = 0
         c = 0
         for node in G.nodes:
             c += 1
-            s += G.degree[node]
             if G.nodes[node]['type'] == 'bill' and G.degree[node] > threshold:
                 nodes_to_remove.append(node)
         G.remove_nodes_from(nodes_to_remove)

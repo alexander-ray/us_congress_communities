@@ -22,7 +22,7 @@ class GraphGenerator:
         :param origins: List of types of legislation to include
         :return: nx bipartite graph
         """
-        assert 93 <= congress < 116, 'Not a valid congress'
+        assert 93 <= congress < 117, 'Not a valid congress'
 
         G = nx.Graph()
 
@@ -73,7 +73,7 @@ class GraphGenerator:
         :param origins: iterable of origins
         :return:
         """
-        assert 93 <= congress < 116, 'Not a valid congress'
+        assert 93 <= congress < 117, 'Not a valid congress'
 
         G = nx.DiGraph()
 
